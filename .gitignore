@@ -1,0 +1,3 @@
+# Ignore model folder and .h5 files
+model/
+*.h5
