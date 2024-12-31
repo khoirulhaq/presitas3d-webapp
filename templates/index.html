@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Presitas3D - Rock Properties Estimation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans">
+
+    <!-- Header dan Sampul -->
+    <div class="text-white py-16 relative" style="background-image: url('/static/cover2.jpg'); background-size: cover; background-position: center;">
+        <div class="bg-opacity-75 py-16">
+            <div class="container mx-auto text-center">
+                <h1 class="text-5xl font-bold">Presitas3D</h1>
+                <p class="text-lg mt-4">An innovative solution powered by deep learning and Convolutional Neural Networks (CNN), enabling you to quickly and accurately analyze 3D digital rocks. With advanced algorithms, our platform estimates key rock properties, including porosity, specific surface area, average grain size, coordination number, and throat radius — all in just a few clicks.</p>
+                <p class="mt-4">For more information on the underlying methodology, check out our published paper: <a href="https://iopscience.iop.org/article/10.1088/2632-2153/acf117/meta" class="text-yellow-200 hover:underline" target="_blank">A study of transfer learning in digital rock properties measurement</a>.</p>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Konten Utama -->
+    <div class="container mx-auto py-10">
+        <h2 class="text-3xl font-bold text-center mb-6">Upload the 3D rock .mat file to get started.</h2>
+
+        <!-- Form untuk mengunggah file -->
+        <form method="POST" enctype="multipart/form-data" class="bg-white p-6 rounded shadow-md max-w-lg mx-auto">
+            <label for="file" class="block text-lg font-medium mb-2">Choose a .mat file:</label>
+            <input type="file" name="file" id="file" required class="block w-full border border-gray-300 rounded px-4 py-2 mb-4">
+            <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Upload</button>
+        </form>
+
+        <!-- Menampilkan plot visualisasi 3D dan gambar lainnya jika tersedia -->
+        {% if plot_html %}
+            <div class="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6">
+                
+                <!-- Plot 3D -->
+                <div class="bg-white border border-gray-300 rounded shadow-md p-4">
+                    <h2 class="text-2xl font-semibold mb-4">3D Visualizatiion</h2>
+                    <div class="relative w-full" style="height: 500px;">
+                        <!-- Plotly 3D plot -->
+                        <div style="height: 100%; overflow: hidden;">
+                            {{ plot_html|safe }}
+                        </div>
+                    </div>
+                </div>
+    
+                <!-- Gambar RGB dan 3 Irisan -->
+                <div class="grid grid-cols-2 gap-4 bg-white border border-gray-300 rounded shadow-md p-4">
+                    <!-- Gambar RGB -->
+                    <div class="bg-white border border-gray-300 rounded shadow-md p-2">
+                        <h3 class="text-lg font-medium text-center mb-2">Synthetic RGB</h3>
+                        <img src="{{ rgb_path }}" alt="Gambar RGB" class="w-32 h-32 rounded mx-auto">
+                    </div>
+    
+                    <!-- Gambar Irisan XY -->
+                    <div class="bg-white border border-gray-300 rounded shadow-md p-2">
+                        <h3 class="text-lg font-medium text-center mb-2">XY Slice</h3>
+                        <img src="{{ xy_path }}" alt="Irisan XY" class="w-32 h-32 rounded mx-auto">
+                    </div>
+    
+                    <!-- Gambar Irisan YZ -->
+                    <div class="bg-white border border-gray-300 rounded shadow-md p-2">
+                        <h3 class="text-lg font-medium text-center mb-2">YZ Slice</h3>
+                        <img src="{{ yz_path }}" alt="Irisan YZ" class="w-32 h-32 rounded mx-auto">
+                    </div>
+    
+                    <!-- Gambar Irisan ZX -->
+                    <div class="bg-white border border-gray-300 rounded shadow-md p-2">
+                        <h3 class="text-lg font-medium text-center mb-2">ZX Slice</h3>
+                        <img src="{{ zx_path }}" alt="Irisan ZX" class="w-32 h-32 rounded mx-auto">
+                    </div>
+                </div>
+            </div>
+    
+            <button id="show-info" class="mt-6 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Predict</button>
+
+            <!-- Indikator loading -->
+            <div id="loading" class="hidden mt-4 p-4 bg-white rounded shadow-md">
+                <div class="flex justify-center items-center">
+                    <div class="animate-pulse w-8 h-8 bg-blue-500 rounded-full"></div>
+                    <p class="ml-4 text-lg text-gray-700">Processing...</p>
+                </div>
+            </div>
+
+            <div id="info" class="mt-4 p-4 bg-white rounded shadow-md hidden">
+                <!-- Informasi array akan ditampilkan di sini -->
+            </div>
+
+        {% endif %}
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-6 mt-10">
+        <div class="container mx-auto text-center">
+            <p class="text-sm">&copy; 2024 Presitas3D. All rights reserved.</p>
+            <p class="text-sm mt-2">Email: <a href="mailto:khoirulhaq.learn@gmail.com" class="text-yellow-200 hover:underline">khoirulhaq.learn@gmail.com</a></p>
+            
+        </div>
+    </footer>
+
+    <script>
+        document.getElementById('show-info')?.addEventListener('click', function () {
+            const filePath = "{{ file.filename if file else '' }}"; // Pastikan hanya nama file
+            
+            if (!filePath) {
+                alert("File belum tersedia untuk prediksi.");
+                return;
+            }
+    
+            // Tampilkan loading spinner
+            const loadingDiv = document.getElementById('loading');
+            loadingDiv.classList.remove('hidden');
+            
+            fetch('/predict', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ file_path: filePath })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const infoDiv = document.getElementById('info');
+                loadingDiv.classList.add('hidden'); // Sembunyikan loading spinner
+                
+                if (data.status === "error") {
+                    infoDiv.innerHTML = `<p class="text-red-500">${data.message}</p>`;
+                } else {
+                    const predictions = data.predictions;
+                    infoDiv.innerHTML = `
+                        <p class="text-lg font-semibold mb-4">Results:</p>
+                        <table class="min-w-full table-auto border-collapse">
+                            <thead>
+                                <tr class="bg-gray-100">
+                                    <th class="px-4 py-2 text-left">Rock Properties</th>
+                                    <th class="px-4 py-2 text-left">Value</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="px-4 py-2 border-b">Avg. Coordination Number</td>
+                                    <td class="px-4 py-2 border-b">${predictions.avg_coordination_number}</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-4 py-2 border-b">Avg. Grain Size</td>
+                                    <td class="px-4 py-2 border-b">${predictions.avg_grain_size}</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-4 py-2 border-b">Avg. Throat Radius</td>
+                                    <td class="px-4 py-2 border-b">${predictions.avg_throat_rad}</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-4 py-2 border-b">Porosity</td>
+                                    <td class="px-4 py-2 border-b">${predictions.porosity}</td>
+                                </tr>
+                                <tr>
+                                    <td class="px-4 py-2">Spesifik Surface Area</td>
+                                    <td class="px-4 py-2">${predictions.spesifik_surface_area}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    `;
+                }
+    
+                infoDiv.classList.remove('hidden');
+            })
+            .catch(error => {
+                console.error('Error fetching array info:', error);
+                document.getElementById('info').innerHTML = `<p class="text-red-500">Terjadi kesalahan saat mengambil data prediksi.</p>`;
+                loadingDiv.classList.add('hidden'); // Sembunyikan loading spinner jika error
+            });
+        });
+    </script>
+
+</body>
+</html>
